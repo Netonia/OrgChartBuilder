@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace OrgChartBuilder.Models;
 
 public class Employee
@@ -8,6 +10,9 @@ public class Employee
     public string Department { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;
     public Guid? ManagerId { get; set; }
+    
+    [JsonIgnore]
     public Employee? Manager { get; set; }
+    
     public List<Employee> Subordinates { get; set; } = new();
 }
