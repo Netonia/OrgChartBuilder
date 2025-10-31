@@ -1,0 +1,30 @@
+@using OrgChartBuilder.Models
+
+<div class="employee-node">
+    <div class="node-card" @onclick="() => OnEmployeeSelected.InvokeAsync(Employee)">
+        <div class="node-name">@Employee.Name</div>
+        <div class="node-position">@Employee.Position</div>
+        <div class="node-department">@Employee.Department</div>
+    </div>
+    
+    @if (Employee.Subordinates.Any())
+    {
+        <div class="subordinates">
+            @foreach (var subordinate in Employee.Subordinates)
+            {
+                <div class="subordinate-container">
+                    <div class="connection-line"></div>
+                    <EmployeeNode Employee="@subordinate" OnEmployeeSelected="@OnEmployeeSelected" />
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public Employee Employee { get; set; } = null!;
+
+    [Parameter]
+    public EventCallback<Employee> OnEmployeeSelected { get; set; }
+}
