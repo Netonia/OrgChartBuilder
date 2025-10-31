@@ -1,7 +1,7 @@
 {
   "mainAssemblyName": "OrgChartBuilder",
   "resources": {
-    "hash": "sha256-MUN0rGdK/lgKY3iJje0ujTnvLdCK/ZJQkBD0TYSDu+A=",
+    "hash": "sha256-252Yh4xAnKqPqxCkYxAlo9oc+3hc6COXF9Dl4hDruyI=",
     "fingerprinting": {
       "Fluid.1eepegtfhp.wasm": "Fluid.wasm",
       "Microsoft.AspNetCore.Components.oh87koxye0.wasm": "Microsoft.AspNetCore.Components.wasm",
@@ -58,7 +58,7 @@
       "System.Threading.l076ub7jlh.wasm": "System.Threading.wasm",
       "System.8rv0tdtrxz.wasm": "System.wasm",
       "System.Private.CoreLib.rula9i99m7.wasm": "System.Private.CoreLib.wasm",
-      "OrgChartBuilder.ouetqwtjmc.wasm": "OrgChartBuilder.wasm",
+      "OrgChartBuilder.21cw9ggfla.wasm": "OrgChartBuilder.wasm",
       "dotnet.js": "dotnet.js",
       "dotnet.native.l4ptthxatg.js": "dotnet.native.js",
       "dotnet.native.d2w7colv7e.wasm": "dotnet.native.wasm",
@@ -139,7 +139,7 @@
       "System.Text.RegularExpressions.780ijbdj17.wasm": "sha256-WZ8H18enmm7KDBU+PLnZ548bhA8rslJWFkZ692qTJkw=",
       "System.Threading.l076ub7jlh.wasm": "sha256-BYM74VCZoN8Ij59a4Qvg1Q891gvsEmqvMmPnLvmqiwo=",
       "System.8rv0tdtrxz.wasm": "sha256-xMF0eauQ5DkSzUozHLFFMQnL6DSJO09nJLtgag+Dzbw=",
-      "OrgChartBuilder.ouetqwtjmc.wasm": "sha256-kKXigFMbXom5GSCjKh1zdGGydJveOCVVpbsP0QpBYmo="
+      "OrgChartBuilder.21cw9ggfla.wasm": "sha256-GlIk+PjTtyfhBsESADgePq/aW6RsD560u6dEMkiz730="
     }
   },
   "cacheBootResources": true,
