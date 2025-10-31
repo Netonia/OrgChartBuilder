@@ -1,0 +1,295 @@
+﻿@page "/"
+@using OrgChartBuilder.Models
+@using OrgChartBuilder.Services
+@using OrgChartBuilder.Components
+@inject OrgChartService OrgChartService
+@inject StorageService StorageService
+@inject TemplateService TemplateService
+@implements IDisposable
+
+<PageTitle>OrgChart Builder</PageTitle>
+
+<div class="orgchart-container">
+    <div class="left-panel">
+        <h3>Employees</h3>
+        
+        <div class="search-box">
+            <input type="text" 
+                   @bind="searchTerm" 
+                   @bind:event="oninput"
+                   @onkeyup="OnSearchChanged"
+                   placeholder="Search employees..." 
+                   class="form-control" />
+        </div>
+
+        <div class="filter-box mb-3">
+            <select @bind="selectedDepartment" @bind:after="OnDepartmentChanged" class="form-select">
+                <option value="">All Departments</option>
+                @foreach (var dept in departments)
+                {
+                    <option value="@dept">@dept</option>
+                }
+            </select>
+        </div>
+
+        <button class="btn btn-primary mb-3 w-100" @onclick="ShowAddEmployee">+ Add Employee</button>
+
+        <div class="employee-list">
+            @foreach (var employee in filteredEmployees)
+            {
+                <div class="employee-item @(selectedEmployee?.Id == employee.Id ? "selected" : "")"
+                     @onclick="() => SelectEmployee(employee)">
+                    <div class="employee-name">@employee.Name</div>
+                    <div class="employee-position">@employee.Position</div>
+                    <div class="employee-department">@employee.Department</div>
+                </div>
+            }
+        </div>
+    </div>
+
+    <div class="center-panel">
+        <h3>Organization Chart</h3>
+        <div class="chart-controls mb-3">
+            <button class="btn btn-secondary" @onclick="ExportChart">Export SVG</button>
+            <button class="btn btn-info" @onclick="SaveChart">Save Chart</button>
+            <button class="btn btn-success" @onclick="LoadChart">Load Chart</button>
+        </div>
+        
+        <div class="chart-view">
+            @if (OrgChartService.GetCurrentChart().Employees.Any())
+            {
+                <div class="hierarchy-view">
+                    @foreach (var root in OrgChartService.GetRootEmployees())
+                    {
+                        <EmployeeNode Employee="@root" OnEmployeeSelected="SelectEmployee" />
+                    }
+                </div>
+            }
+            else
+            {
+                <div class="empty-state">
+                    <p>No employees yet. Add your first employee to get started!</p>
+                </div>
+            }
+        </div>
+    </div>
+
+    <div class="right-panel">
+        @if (selectedEmployee != null && !isEditing)
+        {
+            <h3>Employee Details</h3>
+            <div class="employee-details">
+                <p><strong>Name:</strong> @selectedEmployee.Name</p>
+                <p><strong>Position:</strong> @selectedEmployee.Position</p>
+                <p><strong>Department:</strong> @selectedEmployee.Department</p>
+                <p><strong>Email:</strong> @selectedEmployee.Email</p>
+                @if (selectedEmployee.Manager != null)
+                {
+                    <p><strong>Manager:</strong> @selectedEmployee.Manager.Name</p>
+                }
+                <p><strong>Direct Reports:</strong> @selectedEmployee.Subordinates.Count</p>
+            </div>
+            <div class="button-group">
+                <button class="btn btn-primary" @onclick="EditEmployee">Edit</button>
+                <button class="btn btn-danger" @onclick="DeleteEmployee">Delete</button>
+            </div>
+        }
+
+        @if (isEditing || isAddingNew)
+        {
+            <h3>@(isAddingNew ? "Add Employee" : "Edit Employee")</h3>
+            <div class="employee-form">
+                <div class="mb-3">
+                    <label class="form-label">Name:</label>
+                    <input type="text" @bind="editEmployee.Name" class="form-control" />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Position:</label>
+                    <input type="text" @bind="editEmployee.Position" class="form-control" />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Department:</label>
+                    <input type="text" @bind="editEmployee.Department" class="form-control" />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Email:</label>
+                    <input type="email" @bind="editEmployee.Email" class="form-control" />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Manager:</label>
+                    <select @bind="editEmployee.ManagerId" class="form-select">
+                        <option value="">None (Top Level)</option>
+                        @foreach (var emp in OrgChartService.GetCurrentChart().Employees.Where(e => e.Id != editEmployee.Id))
+                        {
+                            <option value="@emp.Id">@emp.Name - @emp.Position</option>
+                        }
+                    </select>
+                </div>
+                <div class="button-group">
+                    <button class="btn btn-success" @onclick="SaveEmployee">Save</button>
+                    <button class="btn btn-secondary" @onclick="CancelEdit">Cancel</button>
+                </div>
+            </div>
+        }
+
+        @if (!isEditing && !isAddingNew && selectedEmployee == null)
+        {
+            <h3>Report Template</h3>
+            <div class="template-editor">
+                <textarea @bind="reportTemplate" rows="10" class="form-control mb-3"></textarea>
+                <button class="btn btn-primary w-100" @onclick="GenerateReport">Generate Report</button>
+            </div>
+            
+            @if (!string.IsNullOrEmpty(generatedReport))
+            {
+                <div class="report-output mt-3">
+                    <h4>Generated Report</h4>
+                    <pre>@generatedReport</pre>
+                </div>
+            }
+        }
+    </div>
+</div>
+
+@code {
+    private List<Employee> filteredEmployees = new();
+    private List<string> departments = new();
+    private Employee? selectedEmployee;
+    private Employee editEmployee = new();
+    private bool isEditing;
+    private bool isAddingNew;
+    private string searchTerm = string.Empty;
+    private string selectedDepartment = string.Empty;
+    private string reportTemplate = string.Empty;
+    private string generatedReport = string.Empty;
+
+    protected override void OnInitialized()
+    {
+        OrgChartService.OnChange += StateHasChanged;
+        LoadData();
+        reportTemplate = TemplateService.GetDefaultTemplate();
+    }
+
+    private void LoadData()
+    {
+        filteredEmployees = OrgChartService.GetCurrentChart().Employees;
+        departments = OrgChartService.GetAllDepartments();
+    }
+
+    private void SelectEmployee(Employee employee)
+    {
+        selectedEmployee = employee;
+        isEditing = false;
+        isAddingNew = false;
+    }
+
+    private void ShowAddEmployee()
+    {
+        editEmployee = new Employee();
+        isAddingNew = true;
+        isEditing = false;
+        selectedEmployee = null;
+    }
+
+    private void EditEmployee()
+    {
+        if (selectedEmployee != null)
+        {
+            editEmployee = new Employee
+            {
+                Id = selectedEmployee.Id,
+                Name = selectedEmployee.Name,
+                Position = selectedEmployee.Position,
+                Department = selectedEmployee.Department,
+                Email = selectedEmployee.Email,
+                ManagerId = selectedEmployee.ManagerId
+            };
+            isEditing = true;
+            isAddingNew = false;
+        }
+    }
+
+    private void SaveEmployee()
+    {
+        try
+        {
+            if (isAddingNew)
+            {
+                OrgChartService.AddEmployee(editEmployee);
+            }
+            else
+            {
+                OrgChartService.UpdateEmployee(editEmployee);
+            }
+
+            LoadData();
+            CancelEdit();
+        }
+        catch (Exception ex)
+        {
+            // Handle error (in a real app, show a toast/notification)
+            Console.WriteLine($"Error: {ex.Message}");
+        }
+    }
+
+    private void DeleteEmployee()
+    {
+        if (selectedEmployee != null)
+        {
+            OrgChartService.RemoveEmployee(selectedEmployee.Id);
+            selectedEmployee = null;
+            LoadData();
+        }
+    }
+
+    private void CancelEdit()
+    {
+        isEditing = false;
+        isAddingNew = false;
+        editEmployee = new Employee();
+    }
+
+    private void OnSearchChanged()
+    {
+        filteredEmployees = OrgChartService.SearchEmployees(searchTerm);
+    }
+
+    private void OnDepartmentChanged()
+    {
+        filteredEmployees = OrgChartService.FilterByDepartment(selectedDepartment);
+    }
+
+    private void GenerateReport()
+    {
+        if (filteredEmployees.Any())
+        {
+            generatedReport = TemplateService.GenerateReportForAll(reportTemplate, filteredEmployees);
+        }
+    }
+
+    private void ExportChart()
+    {
+        // Placeholder for SVG export functionality
+        Console.WriteLine("Export chart functionality to be implemented with D3.js");
+    }
+
+    private async Task SaveChart()
+    {
+        await StorageService.SaveChartAsync(OrgChartService.GetCurrentChart());
+    }
+
+    private async Task LoadChart()
+    {
+        var charts = await StorageService.LoadAllChartsAsync();
+        if (charts.Any())
+        {
+            OrgChartService.SetCurrentChart(charts.First());
+            LoadData();
+        }
+    }
+
+    public void Dispose()
+    {
+        OrgChartService.OnChange -= StateHasChanged;
+    }
+}
